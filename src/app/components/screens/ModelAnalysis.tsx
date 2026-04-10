@@ -445,38 +445,6 @@ export function ModelAnalysis() {
         )}
       </div>
 
-      {/* ── B. CONFUSION MATRIX — Technical View only ── */}
-      {viewMode === "technical" && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-              <Target className="w-4 h-4 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-slate-800" style={{ fontSize: "15px", fontWeight: 700 }}>Confusion Matrix</p>
-              <p className="text-slate-400" style={{ fontSize: "11px" }}>Shows classification errors for purchase prediction · Test set: 2,466 sessions</p>
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              {[
-                { label: "Correct", count: confMatrix.TP + confMatrix.TN, color: "#22C55E", bg: "#ECFDF5" },
-                { label: "Errors",  count: confMatrix.FP + confMatrix.FN, color: "#EF4444", bg: "#FEF2F2" },
-              ].map((s) => (
-                <div key={s.label} className="px-3 py-1.5 rounded-full" style={{ background: s.bg }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: s.color }}>
-                    {s.count.toLocaleString()} {s.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <div style={{ minWidth: "420px" }}>
-              <ConfusionMatrix />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── C. FEATURE IMPORTANCE ── */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-5">
         <div className="md:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
