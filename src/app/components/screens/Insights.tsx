@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
   BarChart,
@@ -26,6 +27,10 @@ import {
   Megaphone,
   MousePointerClick,
   Sparkles,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  Send,
 } from "lucide-react";
 import { useSession } from "../../context/SessionContext";
 
@@ -417,6 +422,13 @@ function InsightsEmptyState() {
 function InsightsFull() {
   const navigate = useNavigate();
   const { resetAll, viewMode } = useSession();
+  const [feedbackRating, setFeedbackRating] = useState<"accurate" | "partial" | "inaccurate" | null>(null);
+  const [feedbackNote, setFeedbackNote] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  const handleFeedbackSubmit = () => {
+    if (feedbackRating) setFeedbackSubmitted(true);
+  };
 
   const handleNewSession = () => {
     resetAll();
@@ -802,6 +814,107 @@ function InsightsFull() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Campaign Feedback Loop ── */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+            <MessageSquare className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-slate-800" style={{ fontSize: "15px", fontWeight: 700 }}>Campaign Feedback
+              {viewMode === "business" ? " — Marketing Team" : " — Feedback Loop"}
+            </p>
+            <p className="text-slate-400" style={{ fontSize: "11px" }}>
+              Rate prediction accuracy against real campaign outcomes to support model improvement
+            </p>
+          </div>
+          <span className="px-2 py-0.5 rounded-full hidden sm:inline" style={{ fontSize: "10px", fontWeight: 700, background: "#F0FDF4", color: "#15803D", border: "1px solid #BBF7D0" }}>Continuous Improvement</span>
+        </div>
+
+        {feedbackSubmitted ? (
+          <div className="flex flex-col items-center py-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3">
+              <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+            </div>
+            <p className="text-slate-800" style={{ fontSize: "15px", fontWeight: 700 }}>Feedback submitted</p>
+            <p className="text-slate-400 mt-1" style={{ fontSize: "12px" }}>Thank you. This feedback helps improve prediction accuracy in future campaigns.</p>
+            <button
+              onClick={() => { setFeedbackSubmitted(false); setFeedbackRating(null); setFeedbackNote(""); }}
+              className="mt-4 px-4 py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+              style={{ fontSize: "12px", fontWeight: 600 }}
+            >
+              Submit another response
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Rating buttons */}
+            <div>
+              <p className="text-slate-600 mb-2" style={{ fontSize: "12px", fontWeight: 600 }}>How accurate were the purchase predictions for your last campaign?</p>
+              <div className="grid grid-cols-3 gap-2 md:gap-3">
+                {([
+                  { id: "accurate",   label: "Accurate",         sub: "Predictions matched outcomes",  icon: ThumbsUp,   color: "#22C55E", bg: "#ECFDF5", border: "#A7F3D0" },
+                  { id: "partial",    label: "Partially Accurate",sub: "Some mismatches observed",      icon: MessageSquare, color: "#F59E0B", bg: "#FFFBEB", border: "#FDE68A" },
+                  { id: "inaccurate", label: "Inaccurate",        sub: "Significant prediction errors",  icon: ThumbsDown, color: "#EF4444", bg: "#FEF2F2", border: "#FECACA" },
+                ] as { id: "accurate" | "partial" | "inaccurate"; label: string; sub: string; icon: any; color: string; bg: string; border: string }[]).map((opt) => {
+                  const Icon = opt.icon;
+                  const selected = feedbackRating === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setFeedbackRating(opt.id)}
+                      className="flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-xl border transition-all"
+                      style={{
+                        background: selected ? opt.bg : "#F8FAFC",
+                        borderColor: selected ? opt.border : "#E2E8F0",
+                        boxShadow: selected ? `0 0 0 2px ${opt.color}30` : "none",
+                        minHeight: "44px",
+                      }}
+                    >
+                      <Icon className="w-4 h-4" style={{ color: selected ? opt.color : "#94A3B8" }} />
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: selected ? opt.color : "#64748B" }}>{opt.label}</span>
+                      <span className="hidden md:block" style={{ fontSize: "10px", color: selected ? opt.color : "#94A3B8" }}>{opt.sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Optional note */}
+            <div>
+              <p className="text-slate-600 mb-1.5" style={{ fontSize: "12px", fontWeight: 600 }}>Campaign outcome note <span className="text-slate-400" style={{ fontWeight: 400 }}>(optional)</span></p>
+              <textarea
+                value={feedbackNote}
+                onChange={(e) => setFeedbackNote(e.target.value)}
+                placeholder="Describe actual conversion results, model improvements needed, or any patterns observed..."
+                rows={3}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-700 resize-none focus:outline-none"
+                style={{ fontSize: "12px", lineHeight: "1.6", background: "#F8FAFC" }}
+              />
+            </div>
+
+            {/* Submit */}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-slate-400" style={{ fontSize: "11px" }}>
+                Feedback is used to evaluate model drift and trigger retraining when needed.
+              </p>
+              <button
+                onClick={handleFeedbackSubmit}
+                disabled={!feedbackRating}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-sm shrink-0"
+                style={{
+                  fontSize: "13px", fontWeight: 700, minHeight: "44px",
+                  opacity: feedbackRating ? 1 : 0.4, cursor: feedbackRating ? "pointer" : "not-allowed",
+                }}
+              >
+                Submit Feedback
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer CTA */}

@@ -7,7 +7,7 @@ import {
 import {
   FlaskConical, BarChart2, GitBranch, CheckCircle2, AlertCircle,
   ArrowRight, ChevronRight, Info, Target, Layers, Shuffle,
-  TrendingUp, FileText, SplitSquareHorizontal,
+  TrendingUp, FileText, SplitSquareHorizontal, Sliders, Database, AlertTriangle, Settings2,
 } from "lucide-react";
 import { useSession } from "../../context/SessionContext";
 
@@ -78,6 +78,36 @@ const decisionPaths = [
     nodeDepth: 2,
     leafSamples: "3,842",
   },
+];
+
+/* ── HYPERPARAMETER SIMULATION DATA ─────────────────────── */
+type MetricSet = { acc: number; prec: number; rec: number; f1: number; auc: number };
+const depthMetrics: Record<number, MetricSet> = {
+  1:  { acc: 72.1, prec: 64.8, rec: 57.3, f1: 60.8, auc: 68.2 },
+  2:  { acc: 79.3, prec: 74.1, rec: 70.8, f1: 72.4, auc: 74.9 },
+  3:  { acc: 83.2, prec: 79.4, rec: 75.9, f1: 77.6, auc: 79.5 },
+  4:  { acc: 86.1, prec: 81.8, rec: 78.2, f1: 79.9, auc: 82.3 },
+  5:  { acc: 87.4, prec: 83.2, rec: 79.6, f1: 81.3, auc: 84.0 },
+  6:  { acc: 88.0, prec: 84.0, rec: 81.0, f1: 82.5, auc: 85.1 },
+  7:  { acc: 88.2, prec: 84.1, rec: 82.0, f1: 83.0, auc: 85.6 },
+  8:  { acc: 88.0, prec: 83.6, rec: 82.5, f1: 83.0, auc: 85.4 },
+  9:  { acc: 87.5, prec: 83.0, rec: 83.0, f1: 83.0, auc: 85.1 },
+  10: { acc: 87.0, prec: 82.5, rec: 83.4, f1: 82.9, auc: 84.8 },
+};
+const giniBias: MetricSet = { acc: -0.5, prec: -0.8, rec: 0.3, f1: -0.4, auc: -0.6 };
+
+/* ── DATA QUALITY / CLASS IMBALANCE ────────────────────── */
+const classDistribution = [
+  { label: "No Purchase", count: 10422, pct: 84.5, color: "#EF4444", bg: "#FEF2F2", border: "#FECACA" },
+  { label: "Purchase",    count: 1908,  pct: 15.5, color: "#22C55E", bg: "#ECFDF5", border: "#A7F3D0" },
+];
+const dataQualityRows = [
+  { label: "Total Samples",        value: "12,330",  status: "info",  color: "#3B82F6" },
+  { label: "Missing Values",       value: "0",       status: "good",  color: "#22C55E" },
+  { label: "Duplicate Entries",    value: "0",       status: "good",  color: "#22C55E" },
+  { label: "Feature Completeness", value: "100%",    status: "good",  color: "#22C55E" },
+  { label: "Class Imbalance Ratio",value: "5.46 : 1",status: "warn",  color: "#F59E0B" },
+  { label: "Total Features",       value: "18",      status: "info",  color: "#7C3AED" },
 ];
 
 /* ── CUSTOM TOOLTIP ─────────────────────── */
@@ -214,6 +244,8 @@ export function ModelAnalysis() {
   const navigate = useNavigate();
   const { viewMode } = useSession();
   const [activeTab, setActiveTab] = useState<"overview" | "confusion" | "roc">("overview");
+  const [maxDepth, setMaxDepth] = useState(5);
+  const [criterion, setCriterion] = useState<"entropy" | "gini">("entropy");
 
   // Business View: redirect to overview (this screen is Technical only)
   if (viewMode === "business") {
@@ -664,6 +696,222 @@ export function ModelAnalysis() {
           Model implemented using custom Decision Tree algorithm (CART) · Online Shoppers Purchasing Intention Dataset · 12,330 sessions · 18 features
         </p>
       </div>
+
+      {/* ── E.5 HYPERPARAMETER TUNING LAB ── Technical View only */}
+      {viewMode === "technical" && (() => {
+        const base = depthMetrics[maxDepth];
+        const bias = criterion === "gini" ? giniBias : { acc: 0, prec: 0, rec: 0, f1: 0, auc: 0 };
+        const tuned = {
+          acc:  parseFloat((base.acc  + bias.acc ).toFixed(1)),
+          prec: parseFloat((base.prec + bias.prec).toFixed(1)),
+          rec:  parseFloat((base.rec  + bias.rec ).toFixed(1)),
+          f1:   parseFloat((base.f1   + bias.f1  ).toFixed(1)),
+          auc:  parseFloat((base.auc  + bias.auc ).toFixed(1)),
+        };
+        const isOverfitting  = maxDepth >= 8;
+        const isUnderfitting = maxDepth <= 2;
+        const isCurrent = maxDepth === 5 && criterion === "entropy";
+        return (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center">
+                  <Sliders className="w-4 h-4 text-violet-500" />
+                </div>
+                <div>
+                  <p className="text-slate-800" style={{ fontSize: "15px", fontWeight: 700 }}>Hyperparameter Tuning Lab</p>
+                  <p className="text-slate-400" style={{ fontSize: "11px" }}>Simulate the effect of different tree configurations on model performance</p>
+                </div>
+              </div>
+              <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-full" style={{ fontSize: "10px", fontWeight: 700, background: "#F5F3FF", color: "#7C3AED" }}>Technical View</span>
+                {isCurrent && (
+                  <span className="px-2 py-0.5 rounded-full" style={{ fontSize: "10px", fontWeight: 700, background: "#ECFDF5", color: "#15803D" }}>Current Config Active</span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              {/* max_depth slider */}
+              <div className="p-4 rounded-xl border border-slate-100" style={{ background: "#F8FAFC" }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-slate-700" style={{ fontSize: "13px", fontWeight: 700 }}>max_depth</p>
+                    <p className="text-slate-400" style={{ fontSize: "11px" }}>Controls tree depth to prevent overfitting</p>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white">
+                    <span style={{ fontSize: "18px", fontWeight: 900, color: "#3B82F6" }}>{maxDepth}</span>
+                  </div>
+                </div>
+                <input
+                  type="range" min={1} max={10} step={1} value={maxDepth}
+                  onChange={(e) => setMaxDepth(parseInt(e.target.value))}
+                  className="w-full cursor-pointer"
+                  style={{ accentColor: "#3B82F6" }}
+                />
+                <div className="flex justify-between mt-1" style={{ fontSize: "10px", color: "#94A3B8", fontWeight: 600 }}>
+                  <span>1 (underfit)</span><span>5 (current)</span><span>10 (overfit)</span>
+                </div>
+                {isUnderfitting && (
+                  <div className="mt-2 flex items-center gap-1.5" style={{ fontSize: "11px", color: "#D97706" }}>
+                    <AlertTriangle className="w-3 h-3" />
+                    <span style={{ fontWeight: 600 }}>Risk of underfitting — model may be too simple</span>
+                  </div>
+                )}
+                {isOverfitting && (
+                  <div className="mt-2 flex items-center gap-1.5" style={{ fontSize: "11px", color: "#DC2626" }}>
+                    <AlertTriangle className="w-3 h-3" />
+                    <span style={{ fontWeight: 600 }}>Risk of overfitting — model may not generalise</span>
+                  </div>
+                )}
+              </div>
+
+              {/* criterion selector */}
+              <div className="p-4 rounded-xl border border-slate-100" style={{ background: "#F8FAFC" }}>
+                <p className="text-slate-700 mb-1" style={{ fontSize: "13px", fontWeight: 700 }}>criterion</p>
+                <p className="text-slate-400 mb-3" style={{ fontSize: "11px" }}>Splitting quality measure at each decision node</p>
+                <div className="flex gap-2">
+                  {(["entropy", "gini"] as const).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setCriterion(c)}
+                      className="flex-1 py-2.5 rounded-xl border transition-all"
+                      style={{
+                        fontSize: "12px", fontWeight: 700,
+                        background: criterion === c ? "#EFF6FF" : "white",
+                        borderColor: criterion === c ? "#BFDBFE" : "#E2E8F0",
+                        color: criterion === c ? "#1D4ED8" : "#94A3B8",
+                      }}
+                    >
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 p-3 rounded-lg" style={{ background: "white", border: "1px solid #E2E8F0" }}>
+                  <p className="text-slate-500" style={{ fontSize: "11px", lineHeight: "1.5" }}>
+                    {criterion === "entropy"
+                      ? "Information Gain — tends to produce more balanced trees. Used in the current production model."
+                      : "Gini Impurity — computationally lighter, slightly different split boundaries vs Entropy."
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Simulated metrics preview */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Settings2 className="w-3.5 h-3.5 text-slate-400" />
+                <p className="text-slate-500" style={{ fontSize: "11px", fontWeight: 700 }}>
+                  Simulated Performance Preview — depth={maxDepth}, criterion={criterion}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
+                {([
+                  { label: "Accuracy",  val: tuned.acc,  color: "#22C55E", prev: 87.4 },
+                  { label: "Precision", val: tuned.prec, color: "#3B82F6", prev: 83.2 },
+                  { label: "Recall",    val: tuned.rec,  color: "#7C3AED", prev: 79.6 },
+                  { label: "F1 Score",  val: tuned.f1,   color: "#F59E0B", prev: 81.3 },
+                  { label: "AUC-ROC",   val: tuned.auc,  color: "#06B6D4", prev: 84.0 },
+                ] as { label: string; val: number; color: string; prev: number }[]).map((m) => {
+                  const diff = parseFloat((m.val - m.prev).toFixed(1));
+                  return (
+                    <div key={m.label} className="rounded-xl px-3 py-3 text-center border" style={{ background: m.color + "08", borderColor: m.color + "25" }}>
+                      <p style={{ fontSize: "clamp(16px, 3vw, 20px)", fontWeight: 900, color: m.color, lineHeight: "1" }}>
+                        {m.val.toFixed(1)}<span style={{ fontSize: "10px" }}>%</span>
+                      </p>
+                      <p className="text-slate-600 mt-0.5" style={{ fontSize: "10px", fontWeight: 700 }}>{m.label}</p>
+                      {!isCurrent && (
+                        <p style={{ fontSize: "10px", fontWeight: 700, color: diff > 0 ? "#22C55E" : diff < 0 ? "#EF4444" : "#94A3B8", marginTop: "2px" }}>
+                          {diff > 0 ? "+" : ""}{diff.toFixed(1)}%
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {!isCurrent && (
+                <div className="flex items-center gap-2 mt-3 px-3 py-2.5 rounded-xl" style={{ background: "#FFF7ED", border: "1px solid #FED7AA" }}>
+                  <Info className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                  <p className="text-orange-700" style={{ fontSize: "11px" }}>
+                    This is a simulated preview based on trend analysis. The production model uses depth=5, criterion=entropy.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── E.6 DATA QUALITY & CLASS DISTRIBUTION ── Technical View only */}
+      {viewMode === "technical" && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
+              <Database className="w-4 h-4 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-slate-800" style={{ fontSize: "15px", fontWeight: 700 }}>Data Quality and Class Distribution</p>
+              <p className="text-slate-400" style={{ fontSize: "11px" }}>Online Shoppers Purchasing Intention Dataset — 12,330 sessions</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Class imbalance visualization */}
+            <div>
+              <p className="text-slate-700 mb-3" style={{ fontSize: "13px", fontWeight: 700 }}>Class Distribution (Target Variable)</p>
+              <div className="space-y-3">
+                {classDistribution.map((cls) => (
+                  <div key={cls.label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-sm" style={{ background: cls.color }} />
+                        <span className="text-slate-700" style={{ fontSize: "12px", fontWeight: 600 }}>{cls.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span style={{ fontSize: "12px", fontWeight: 800, color: cls.color }}>{cls.pct}%</span>
+                        <span className="text-slate-400" style={{ fontSize: "10px" }}>({cls.count.toLocaleString()} samples)</span>
+                      </div>
+                    </div>
+                    <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${cls.pct}%`, background: cls.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-start gap-2.5 px-3 py-3 rounded-xl border" style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}>
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-amber-700" style={{ fontSize: "11px", lineHeight: "1.5" }}>
+                  <strong>Class imbalance detected</strong> — Ratio 5.46:1 (No Purchase vs Purchase). The decision tree handles this natively through entropy-based splitting, but precision on the minority class (Purchase) warrants close monitoring in production.
+                </p>
+              </div>
+            </div>
+
+            {/* Data quality rows */}
+            <div>
+              <p className="text-slate-700 mb-3" style={{ fontSize: "13px", fontWeight: 700 }}>Dataset Statistics</p>
+              <div className="space-y-2">
+                {dataQualityRows.map((row) => (
+                  <div key={row.label} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: row.color + "08", border: `1px solid ${row.color}25` }}>
+                    <div className="flex items-center gap-2">
+                      {row.status === "good" && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: row.color }} />}
+                      {row.status === "warn" && <AlertTriangle className="w-3.5 h-3.5 shrink-0" style={{ color: row.color }} />}
+                      {row.status === "info" && <Info className="w-3.5 h-3.5 shrink-0" style={{ color: row.color }} />}
+                      <span className="text-slate-600" style={{ fontSize: "12px", fontWeight: 500 }}>{row.label}</span>
+                    </div>
+                    <span style={{ fontSize: "13px", fontWeight: 800, color: row.color }}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 px-3 py-2.5 rounded-xl" style={{ background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+                <p className="text-slate-400" style={{ fontSize: "11px", lineHeight: "1.5" }}>
+                  No preprocessing for missing values or duplicates was required. Categorical features (Visitor Type, Traffic Type, Month) were label-encoded before training.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── F. MODEL NOTES ── */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
